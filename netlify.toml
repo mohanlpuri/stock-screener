@@ -1,6 +1,9 @@
-
 [build]
   functions = "netlify/functions"
+  command = "npm install"
 
 [functions]
   node_bundler = "esbuild"
+
+[functions."get-stocks"]
+  timeout = 26
