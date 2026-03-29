@@ -4,6 +4,7 @@
 
 [functions]
   node_bundler = "esbuild"
+  included_files = ["node_modules/yahoo-finance2/**"]
 
 [functions."get-stocks"]
   timeout = 26

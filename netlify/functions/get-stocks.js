@@ -1,4 +1,4 @@
-const yahooFinance = require('yahoo-finance2').default
+const { default: yahooFinance } = require('yahoo-finance2')
 
 exports.handler = async function(event) {
 
