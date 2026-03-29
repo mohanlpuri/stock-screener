@@ -77,6 +77,13 @@
       font-size: 14px;
     }
 
+    input[type="text"] {
+      padding: 9px 12px;
+      border: 2px solid #1a1a1a;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+
     select {
       padding: 9px 12px;
       border: 2px solid #1a1a1a;
@@ -317,6 +324,11 @@
         </select>
       </div>
 
+      <div class="filter-group">
+        <label>Custom tickers (optional)</label>
+        <input type="text" id="customTickers" placeholder="e.g. AAPL, MSFT, BAC" style="width:220px;">
+      </div>
+
       <button id="screenBtn">Screen stocks</button>
 
     </div>
@@ -359,9 +371,7 @@
       if (!low || !high || !current) return '<span class="cap">N/A</span>'
       const range = high - low
       if (range <= 0) return '<span class="cap">N/A</span>'
-
       const pct = Math.min(100, Math.max(0, ((current - low) / range) * 100))
-
       return '<div class="range-wrap">' +
                '<div class="range-current">$' + current.toFixed(2) + '</div>' +
                '<div class="range-track">' +
@@ -430,23 +440,27 @@
              '</div>'
     }
 
-    async function fetchStocks(maxPrice, marketCap, minVolume) {
+    async function fetchStocks(maxPrice, marketCap, minVolume, customTickers) {
       const response = await fetch('/.netlify/functions/get-stocks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ maxPrice, marketCap, minVolume })
+        body: JSON.stringify({ maxPrice, marketCap, minVolume, customTickers })
       })
       const data = await response.json()
       return data.stocks
     }
 
     async function screen() {
-      const maxPrice    = parseFloat(document.getElementById('maxPrice').value)
-      const marketCap   = document.getElementById('marketCap').value
-      const minVolume   = document.getElementById('minVolume').value
-      const scoreFilter = parseInt(document.getElementById('scoreFilter').value)
-      const btn         = document.getElementById('screenBtn')
-      const out         = document.getElementById('output')
+      const maxPrice      = parseFloat(document.getElementById('maxPrice').value)
+      const marketCap     = document.getElementById('marketCap').value
+      const minVolume     = document.getElementById('minVolume').value
+      const scoreFilter   = parseInt(document.getElementById('scoreFilter').value)
+      const customTickers = document.getElementById('customTickers').value
+        .split(',')
+        .map(function(t) { return t.trim().toUpperCase() })
+        .filter(function(t) { return t.length > 0 })
+      const btn = document.getElementById('screenBtn')
+      const out = document.getElementById('output')
 
       if (!maxPrice || maxPrice <= 0) {
         out.innerHTML = '<div class="error">Please enter a valid maximum price.</div>'
@@ -459,7 +473,7 @@
 
       try {
 
-        const stocks = await fetchStocks(maxPrice, marketCap, minVolume)
+        const stocks = await fetchStocks(maxPrice, marketCap, minVolume, customTickers)
 
         if (!stocks || stocks.length === 0) {
           out.innerHTML = '<div class="empty">No stocks found. Try relaxing the filters.</div>'
@@ -502,8 +516,12 @@
           '</tr>'
         }).join('')
 
+        const label = customTickers.length > 0
+          ? 'Showing ' + scored.length + ' of ' + stocks.length + ' custom tickers'
+          : 'Showing ' + scored.length + ' of ' + stocks.length + ' stocks'
+
         out.innerHTML =
-          '<div class="results-count">Showing ' + scored.length + ' of ' + stocks.length + ' stocks — sorted by value score. Prices delayed 15 min. Not financial advice.</div>' +
+          '<div class="results-count">' + label + ' — sorted by value score. Prices delayed 15 min. Not financial advice.</div>' +
           '<div class="table-wrap">' +
             '<table>' +
               '<thead><tr>' +

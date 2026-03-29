@@ -6,7 +6,7 @@ exports.handler = async function(event) {
 
   try {
     const body = JSON.parse(event.body)
-    const { maxPrice, marketCap, minVolume } = body
+    const { maxPrice, marketCap, minVolume, customTickers } = body
 
     const volumeMap = { any: 0, '100k': 100000, '500k': 500000, '1m': 1000000, '5m': 5000000 }
     const minVol = volumeMap[minVolume] || 0
@@ -17,7 +17,8 @@ exports.handler = async function(event) {
     if (marketCap === 'mid')   { capMin = 2000000000;    capMax = 10000000000   }
     if (marketCap === 'large') { capMin = 10000000000;   capMax = 99999999999999 }
 
-    const tickers = [
+    // Use custom tickers if provided — otherwise use default universe
+    const defaultTickers = [
       // Banks & Financial
       'BAC','WFC','C','USB','FITB','RF','KEY','HBAN','CFG','MTB',
       // Energy
@@ -39,6 +40,11 @@ exports.handler = async function(event) {
       // Diversified
       'GE','DVN','OVV','CIVI','SM','NOG','CHK','AR'
     ].filter((v, i, a) => a.indexOf(v) === i)
+
+    // If user typed custom tickers use those — otherwise use default list
+    const tickers = (customTickers && customTickers.length > 0)
+      ? customTickers
+      : defaultTickers
 
     // Step 1 — get a crumb and cookie from Yahoo Finance
     const crumbRes = await fetch('https://query1.finance.yahoo.com/v1/test/getcrumb', {
@@ -65,11 +71,9 @@ exports.handler = async function(event) {
     })
 
     const data = await quotesRes.json()
-    console.log('Yahoo response status:', quotesRes.status)
-    console.log('Result count:', data?.quoteResponse?.result?.length)
-
     const quotes = data?.quoteResponse?.result || []
 
+    // Apply filters and build results
     const results = quotes
       .filter(q => {
         if (!q) return false
