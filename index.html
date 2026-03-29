@@ -318,78 +318,15 @@
     }
 
     async function fetchStocks(maxPrice, marketCap, minVolume) {
-      if (IS_LOCAL) {
-        const symbolsRes = await fetch(
-          'https://finnhub.io/api/v1/stock/symbol?exchange=US&token=' + LOCAL_FINNHUB_KEY
-        )
-        const symbols = await symbolsRes.json()
-        const sample = symbols.slice(0, 100)
-        const results = []
-
-        for (const stock of sample) {
-          try {
-            const quoteRes = await fetch(
-              'https://finnhub.io/api/v1/quote?symbol=' + stock.symbol +
-              '&token=' + LOCAL_FINNHUB_KEY
-            )
-            const quote = await quoteRes.json()
-
-            const profileRes = await fetch(
-              'https://finnhub.io/api/v1/stock/profile2?symbol=' + stock.symbol +
-              '&token=' + LOCAL_FINNHUB_KEY
-            )
-            const profile = await profileRes.json()
-
-            const finRes = await fetch(
-              'https://finnhub.io/api/v1/stock/metric?symbol=' + stock.symbol +
-              '&metric=all&token=' + LOCAL_FINNHUB_KEY
-            )
-            const fin = await finRes.json()
-            const metrics = fin.metric || {}
-
-            const price = quote.c
-            const volume = quote.v
-            const cap = profile.marketCapitalization
-            const sector = profile.finnhubIndustry || 'Unknown'
-
-            if (!price || price <= 0) continue
-            if (price > maxPrice) continue
-            if (marketCap === 'small' && cap >= 2000) continue
-            if (marketCap === 'mid' && (cap < 2000 || cap >= 10000)) continue
-            if (marketCap === 'large' && cap < 10000) continue
-            if (minVolume === '100k' && volume < 100000) continue
-            if (minVolume === '500k' && volume < 500000) continue
-            if (minVolume === '1m' && volume < 1000000) continue
-            if (minVolume === '5m' && volume < 5000000) continue
-
-            results.push({
-              ticker: stock.symbol,
-              name: profile.name || stock.description,
-              price: price,
-              marketCap: cap,
-              volume: volume,
-              sector: sector,
-              week52High: metrics['52WeekHigh'] || null,
-              week52Low: metrics['52WeekLow'] || null,
-              peRatio: metrics['peBasicExclExtraTTM'] || null,
-              bookValue: metrics['bookValuePerShareQuarterly'] || null
-            })
-
-            if (results.length >= 25) break
-
-          } catch(e) { continue }
-        }
-        return results
-
-      } else {
-        const response = await fetch('/.netlify/functions/get-stocks', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ maxPrice, marketCap, minVolume })
-        })
-        const data = await response.json()
-        return data.stocks
-      }
+      // Always call Netlify function — Yahoo Finance works from server side
+      // For local testing use Live Server and proxy through Netlify Dev
+      const response = await fetch('/.netlify/functions/get-stocks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ maxPrice, marketCap, minVolume })
+      })
+      const data = await response.json()
+      return data.stocks
     }
 
     async function getOpinion(stock) {
