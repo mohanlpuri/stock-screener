@@ -337,14 +337,17 @@
     }
 
     async function getOpinion(stock) {
-      const prompt = 'Given this stock: ' + stock.ticker +
-        ' (' + stock.name + '), Price: $' + stock.price +
-        ', Market Cap: ' + formatCap(stock.marketCap) +
-        ', Sector: ' + stock.sector +
-        ', P/E: ' + fmtPE(stock.peRatio) +
-        ', Book Value: ' + fmtBook(stock.bookValue) +
-        ', 52W Range: ' + fmt52(stock.week52Low, stock.week52High) +
-        '. Give a one word opinion: Buy, Hold, or Sell. Return ONLY that one word.'
+      const prompt = 'You are a financial analyst evaluating stocks for a retail investor. ' +
+        'Based ONLY on these metrics, give ONE word: Buy, Hold, or Sell. ' +
+        'Stock: ' + stock.ticker + ' (' + stock.name + '). ' +
+        'Current price: $' + stock.price + '. ' +
+        '52W range: ' + fmt52(stock.week52Low, stock.week52High) + ' — is price near low (bullish) or high (bearish)? ' +
+        'P/E ratio: ' + fmtPE(stock.peRatio) + ' — low P/E may indicate value. ' +
+        'Book value: ' + fmtBook(stock.bookValue) + ' — price vs book value matters. ' +
+        'Market cap: ' + formatCap(stock.marketCap) + '. ' +
+        'Sector: ' + stock.sector + '. ' +
+        'Give genuine differentiated analysis — not everything is Hold. ' +
+        'Return ONLY one word: Buy, Hold, or Sell.'
 
       if (IS_LOCAL) {
         const response = await fetch('https://api.anthropic.com/v1/messages', {

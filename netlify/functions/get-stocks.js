@@ -18,15 +18,27 @@ exports.handler = async function(event) {
     if (marketCap === 'large') { capMin = 10000000000;   capMax = 99999999999999 }
 
     const tickers = [
-      'F','BAC','INTC','T','AAL','CCL','SNAP','NOK','VALE','PBR',
-      'ITUB','GOLD','NEM','KGC','ABEV','RIG','ERIC','BB','SIRI',
-      'LCID','RIVN','NIO','XPEV','SOFI','MARA','RIOT','PTON','NCLH',
-      'MPW','NLY','AGNC','GME','AMC','TLRY','CGC','ACB','GPRO',
-      'PLUG','SPCE','DNA','JOBY','ASTS','SMMT','RXRX','CRSP','NTLA',
-      'BEAM','EDIT','WBA','UWMC','CLSK','HUT','BITF','RCL','NKLA',
-      'LI','OPEN','CLOV','IVR','TWO','MFA','RC','WKHS','CIFR','ARCT',
-      'VERV','FATE','BTBT','PSNY','SANA'
-    ]
+      // Banks & Financial
+      'BAC','WFC','C','USB','FITB','RF','KEY','HBAN','CFG','MTB',
+      // Energy
+      'T','VALE','PBR','RIG','NOK','ABEV','ITUB','SLB','HAL','MRO',
+      // Technology
+      'INTC','ERIC','BB','SNAP','CSCO','HPQ','JNPR','AMD','DELL',
+      // Healthcare
+      'PFE','KVUE','OGN','WBA','BHC','VTRS','PRGO',
+      // Consumer & Airlines
+      'F','GM','AAL','UAL','DAL','CCL','NCLH','M','KSS','GPS',
+      // REITs
+      'NLY','AGNC','MPW','IVR','TWO','MFA','STWD','BXMT','RITM',
+      // Media & Telecom
+      'VZ','SIRI','PARA','WBD','LUMN',
+      // Mining & Materials
+      'GOLD','NEM','KGC','HL','PAAS','AG','EXK','TECK','FCX',
+      // Clean energy
+      'PLUG','BE','FCEL','SPWR','RUN','NOVA',
+      // Diversified
+      'GE','DVN','OVV','CIVI','SM','NOG','CHK','AR'
+    ].filter((v, i, a) => a.indexOf(v) === i)
 
     // Step 1 — get a crumb and cookie from Yahoo Finance
     const crumbRes = await fetch('https://query1.finance.yahoo.com/v1/test/getcrumb', {
