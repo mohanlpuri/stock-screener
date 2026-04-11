@@ -43,6 +43,9 @@ exports.handler = async function(event) {
     const crumb = await crumbRes.text()
     const cookies = crumbRes.headers.get('set-cookie') || ''
 
+    console.log('Crumb:', crumb)
+    console.log('Crumb status:', crumbRes.status)
+
     // Step 2 — fetch all quotes in one call
     const symbols = tickers.join(',')
     const url = 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=' + symbols +
@@ -59,6 +62,8 @@ exports.handler = async function(event) {
     const data = await quotesRes.json()
     const quotes = data?.quoteResponse?.result || []
 
+    console.log('Quotes count:', quotes.length)
+
     const results = quotes
       .filter(q => {
         if (!q) return false
@@ -72,6 +77,7 @@ exports.handler = async function(event) {
         return true
       })
       .slice(0, 25)
+      console.log('Results after filter:', results.length)
       .map(q => ({
         ticker: q.symbol,
         name: q.shortName || q.symbol,
