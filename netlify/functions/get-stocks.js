@@ -84,7 +84,8 @@ exports.handler = async function(event) {
         peRatio: q.trailingPE || null,
         bookValue: q.bookValue || null,
         analystRating: q.averageAnalystRating || null,
-        analystCount: q.numberOfAnalystOpinions || null
+        analystCount: q.numberOfAnalystOpinions || null,
+        dividendYield: q.trailingAnnualDividendYield || null
       }))
 
     return {
