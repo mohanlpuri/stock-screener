@@ -13,20 +13,30 @@ exports.handler = async function(event) {
 
     let capMin = 0
     let capMax = 99999999999999
-    if (marketCap === 'small') { capMin = 0;           capMax = 2000000000     }
-    if (marketCap === 'mid')   { capMin = 2000000000;  capMax = 10000000000    }
-    if (marketCap === 'large') { capMin = 10000000000; capMax = 99999999999999 }
+    if (marketCap === 'small') { capMin = 0;             capMax = 2000000000    }
+    if (marketCap === 'mid')   { capMin = 2000000000;    capMax = 10000000000   }
+    if (marketCap === 'large') { capMin = 10000000000;   capMax = 99999999999999 }
 
     const defaultTickers = [
+      // Banks & Financial
       'BAC','WFC','C','USB','FITB','RF','KEY','HBAN','CFG','MTB',
+      // Energy
       'T','VALE','PBR','RIG','NOK','ABEV','ITUB','SLB','HAL','MRO',
+      // Technology
       'INTC','ERIC','BB','SNAP','CSCO','HPQ','JNPR','AMD','DELL',
+      // Healthcare
       'PFE','KVUE','OGN','WBA','BHC','VTRS','PRGO',
+      // Consumer & Airlines
       'F','GM','AAL','UAL','DAL','CCL','NCLH','M','KSS','GPS',
+      // REITs
       'NLY','AGNC','MPW','IVR','TWO','MFA','STWD','BXMT','RITM',
+      // Media & Telecom
       'VZ','SIRI','PARA','WBD','LUMN',
+      // Mining & Materials
       'GOLD','NEM','KGC','HL','PAAS','AG','EXK','TECK','FCX',
+      // Clean energy
       'PLUG','BE','FCEL','SPWR','RUN','NOVA',
+      // Diversified
       'GE','DVN','OVV','CIVI','SM','NOG','CHK','AR'
     ].filter((v, i, a) => a.indexOf(v) === i)
 
@@ -34,43 +44,43 @@ exports.handler = async function(event) {
       ? customTickers
       : defaultTickers
 
-    const symbols = tickers.join(',')
+    // Step 1 — get crumb and cookie from Yahoo Finance
+    const crumbRes = await fetch('https://query1.finance.yahoo.com/v1/test/getcrumb', {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5'
+      }
+    })
+    const crumb = await crumbRes.text()
+    const cookies = crumbRes.headers.get('set-cookie') || ''
 
-    // Option 1: query2 instead of query1
-    // Option 2: better browser-like headers
-    const url = `https://query2.finance.yahoo.com/v8/finance/quote?symbols=${symbols}&fields=symbol,shortName,regularMarketPrice,marketCap,averageDailyVolume3Month,fiftyTwoWeekHigh,fiftyTwoWeekLow,trailingPE,bookValue,averageAnalystRating,numberOfAnalystOpinions,trailingAnnualDividendYield`
+    // Step 2 — fetch all quotes in one call
+    const symbols = tickers.join(',')
+    const url = 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=' + symbols +
+                '&crumb=' + encodeURIComponent(crumb)
 
     const quotesRes = await fetch(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'application/json, text/plain, */*',
-        'Accept-Language': 'en-US,en;q=0.9',
-        'Accept-Encoding': 'gzip, deflate, br',
-        'Origin': 'https://finance.yahoo.com',
-        'Referer': 'https://finance.yahoo.com/screener',
-        'Sec-Fetch-Dest': 'empty',
-        'Sec-Fetch-Mode': 'cors',
-        'Sec-Fetch-Site': 'same-site'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'application/json',
+        'Cookie': cookies
       }
     })
 
-    console.log('Yahoo status:', quotesRes.status)
     const data = await quotesRes.json()
-    console.log('Raw data:', JSON.stringify(data).slice(0, 300))
-
     const quotes = data?.quoteResponse?.result || []
-    console.log('Quotes count:', quotes.length)
 
     const results = quotes
       .filter(q => {
         if (!q) return false
         const price = q.regularMarketPrice
         const cap = q.marketCap || 0
-        const vol = q.averageDailyVolume3Month || null
+        const vol = q.averageDailyVolume3Month || 0
         if (!price || price <= 0) return false
         if (price > maxPrice) return false
         if (cap < capMin || cap > capMax) return false
-        if (minVol > 0 && vol !== null && vol < minVol) return false
+        if (vol < minVol) return false
         return true
       })
       .slice(0, 25)
@@ -90,8 +100,6 @@ exports.handler = async function(event) {
         dividendYield: q.trailingAnnualDividendYield || null
       }))
 
-    console.log('Results count:', results.length)
-
     return {
       statusCode: 200,
       headers: {
@@ -102,7 +110,6 @@ exports.handler = async function(event) {
     }
 
   } catch(e) {
-    console.log('Error:', e.message)
     return {
       statusCode: 500,
       headers: {
