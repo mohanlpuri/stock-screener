@@ -8,6 +8,8 @@ exports.handler = async function(event) {
     const body = JSON.parse(event.body)
     const { maxPrice, marketCap, minVolume, customTickers } = body
 
+    const apiKey = process.env.FMP_API_KEY
+
     const volumeMap = { any: 0, '100k': 100000, '500k': 500000, '1m': 1000000, '5m': 5000000 }
     const minVol = volumeMap[minVolume] || 0
 
@@ -60,43 +62,29 @@ exports.handler = async function(event) {
     }
     console.log('Total batches:', batches.length)
 
-    // Fetch each batch with a small delay between requests
+    // Fetch each batch from Financial Modeling Prep
     const allQuotes = []
     for (let i = 0; i < batches.length; i++) {
       const batch = batches[i]
       const symbols = batch.join(',')
-      const url = `https://query2.finance.yahoo.com/v8/finance/quote?symbols=${symbols}&fields=symbol,shortName,regularMarketPrice,marketCap,averageDailyVolume3Month,fiftyTwoWeekHigh,fiftyTwoWeekLow,trailingPE,bookValue,averageAnalystRating,numberOfAnalystOpinions,trailingAnnualDividendYield`
+      const url = `https://financialmodelingprep.com/api/v3/quote/${symbols}?apikey=${apiKey}`
 
       try {
-        const quotesRes = await fetch(url, {
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'application/json, text/plain, */*',
-            'Accept-Language': 'en-US,en;q=0.9',
-            'Accept-Encoding': 'gzip, deflate, br',
-            'Origin': 'https://finance.yahoo.com',
-            'Referer': 'https://finance.yahoo.com/screener',
-            'Sec-Fetch-Dest': 'empty',
-            'Sec-Fetch-Mode': 'cors',
-            'Sec-Fetch-Site': 'same-site'
-          }
-        })
+        const res = await fetch(url)
+        console.log('Batch', i + 1, 'status:', res.status)
 
-        console.log('Batch', i + 1, 'status:', quotesRes.status)
-
-        if (quotesRes.ok) {
-          const data = await quotesRes.json()
-          const quotes = data?.quoteResponse?.result || []
-          console.log('Batch', i + 1, 'quotes:', quotes.length)
-          allQuotes.push(...quotes)
+        if (res.ok) {
+          const data = await res.json()
+          console.log('Batch', i + 1, 'quotes:', data.length)
+          allQuotes.push(...data)
         }
       } catch(batchErr) {
         console.log('Batch', i + 1, 'error:', batchErr.message)
       }
 
-      // Small delay between batches to avoid rate limiting
+      // Small delay between batches
       if (i < batches.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, 500))
+        await new Promise(resolve => setTimeout(resolve, 300))
       }
     }
 
@@ -105,9 +93,9 @@ exports.handler = async function(event) {
     const results = allQuotes
       .filter(q => {
         if (!q) return false
-        const price = q.regularMarketPrice
+        const price = q.price
         const cap = q.marketCap || 0
-        const vol = q.averageDailyVolume3Month || null
+        const vol = q.avgVolume || null
         if (!price || price <= 0) return false
         if (price > maxPrice) return false
         if (cap < capMin || cap > capMax) return false
@@ -117,18 +105,18 @@ exports.handler = async function(event) {
       .slice(0, 25)
       .map(q => ({
         ticker: q.symbol,
-        name: q.shortName || q.symbol,
-        price: q.regularMarketPrice,
+        name: q.name || q.symbol,
+        price: q.price,
         marketCap: q.marketCap,
-        volume: q.averageDailyVolume3Month || 0,
+        volume: q.avgVolume || 0,
         sector: q.sector || 'Unknown',
-        week52High: q.fiftyTwoWeekHigh || null,
-        week52Low: q.fiftyTwoWeekLow || null,
-        peRatio: q.trailingPE || null,
-        bookValue: q.bookValue || null,
-        analystRating: q.averageAnalystRating || null,
-        analystCount: q.numberOfAnalystOpinions || null,
-        dividendYield: q.trailingAnnualDividendYield || null
+        week52High: q.yearHigh || null,
+        week52Low: q.yearLow || null,
+        peRatio: q.pe || null,
+        bookValue: null, // FMP basic quote doesn't include book value
+        analystRating: null,
+        analystCount: null,
+        dividendYield: q.lastAnnualDividend || null
       }))
 
     console.log('Results count:', results.length)
