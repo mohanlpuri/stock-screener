@@ -10,6 +10,8 @@ exports.handler = async function(event) {
 
     const apiKey = process.env.FMP_API_KEY
 
+    console.log('API Key present:', apiKey ? 'yes, length=' + apiKey.length : 'NO - MISSING')
+
     const volumeMap = { any: 0, '100k': 100000, '500k': 500000, '1m': 1000000, '5m': 5000000 }
     const minVol = volumeMap[minVolume] || 0
 
