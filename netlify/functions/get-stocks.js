@@ -15,7 +15,7 @@ exports.handler = async function(event) {
 
     let capMin = 0
     let capMax = 99999999999999
-    if (marketCap === 'small') { capMin = 0;           capMax = 2000000000     }
+    if (marketCap === 'small') { capMin = 0;           capMax: 2000000000     }
     if (marketCap === 'mid')   { capMin = 2000000000;  capMax = 10000000000    }
     if (marketCap === 'large') { capMin = 10000000000; capMax = 99999999999999 }
 
@@ -62,12 +62,12 @@ exports.handler = async function(event) {
     }
     console.log('Total batches:', batches.length)
 
-    // Fetch each batch from Financial Modeling Prep
+    // Fetch each batch from FMP stable endpoint
     const allQuotes = []
     for (let i = 0; i < batches.length; i++) {
       const batch = batches[i]
       const symbols = batch.join(',')
-      const url = `https://financialmodelingprep.com/api/v3/quote/${symbols}?apikey=${apiKey}`
+      const url = `https://financialmodelingprep.com/stable/quote?symbol=${symbols}&apikey=${apiKey}`
 
       try {
         const res = await fetch(url)
@@ -113,7 +113,7 @@ exports.handler = async function(event) {
         week52High: q.yearHigh || null,
         week52Low: q.yearLow || null,
         peRatio: q.pe || null,
-        bookValue: null, // FMP basic quote doesn't include book value
+        bookValue: null,
         analystRating: null,
         analystCount: null,
         dividendYield: q.lastAnnualDividend || null
