@@ -55,15 +55,15 @@ exports.handler = async function(event) {
       ? customTickers
       : defaultTickers
 
-    // Split tickers into batches of 8 (free plan limit per minute)
-    const batchSize = 8
+    // Split tickers into batches of 20
+    const batchSize = 20
     const batches = []
     for (let i = 0; i < tickers.length; i += batchSize) {
       batches.push(tickers.slice(i, i + batchSize))
     }
     console.log('Total batches:', batches.length)
 
-    // Fetch each batch with 61 second delay between batches
+    // Fetch each batch from Twelve Data
     const allQuotes = []
     for (let i = 0; i < batches.length; i++) {
       const batch = batches[i]
@@ -76,9 +76,11 @@ exports.handler = async function(event) {
 
         if (res.ok) {
           const data = await res.json()
-          console.log('Batch', i + 1, 'message:', data.message || 'ok')
+          console.log('Batch', i + 1, 'raw data keys:', Object.keys(data).slice(0, 3))
+          console.log('Batch', i + 1, 'message:', data.message)
 
           // If single ticker, data is an object not array
+          // If multiple tickers, data is an object keyed by ticker
           if (batch.length === 1) {
             if (data && data.symbol && !data.code) {
               allQuotes.push(data)
@@ -97,10 +99,9 @@ exports.handler = async function(event) {
         console.log('Batch', i + 1, 'error:', batchErr.message)
       }
 
-      // Wait 61 seconds between batches to reset API credits
+      // Small delay between batches
       if (i < batches.length - 1) {
-        console.log('Waiting 61 seconds before next batch...')
-        await new Promise(resolve => setTimeout(resolve, 61000))
+        await new Promise(resolve => setTimeout(resolve, 300))
       }
     }
 
@@ -126,8 +127,8 @@ exports.handler = async function(event) {
         marketCap: parseFloat(q.market_cap) || null,
         volume: parseFloat(q.average_volume) || 0,
         sector: q.sector || 'Unknown',
-        week52High: q.fifty_two_week ? parseFloat(q.fifty_two_week.high) : null,
-        week52Low: q.fifty_two_week ? parseFloat(q.fifty_two_week.low) : null,
+        week52High: parseFloat(q.fifty_two_week.high) || null,
+        week52Low: parseFloat(q.fifty_two_week.low) || null,
         peRatio: parseFloat(q.pe) || null,
         bookValue: null,
         analystRating: null,
