@@ -76,6 +76,7 @@ exports.handler = async function(event) {
 
         if (res.ok) {
           const data = await res.json()
+          console.log('Batch', i + 1, 'raw data keys:', Object.keys(data).slice(0, 3))
 
           // If single ticker, data is an object not array
           // If multiple tickers, data is an object keyed by ticker
