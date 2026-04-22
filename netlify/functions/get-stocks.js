@@ -55,56 +55,34 @@ exports.handler = async function(event) {
       ? customTickers
       : defaultTickers
 
-    // Split tickers into batches of 8 (free plan limit per minute)
-    const batchSize = 8
-    const batches = []
-    for (let i = 0; i < tickers.length; i += batchSize) {
-      batches.push(tickers.slice(i, i + batchSize))
-    }
-    console.log('Total batches:', batches.length)
+    // Only fetch first 8 tickers (free plan limit per minute)
+    const first8 = tickers.slice(0, 8)
+    console.log('Fetching tickers:', first8.join(','))
 
-    // Fetch each batch with 61 second delay between batches
+    const symbols = first8.join(',')
+    const url = `https://api.twelvedata.com/quote?symbol=${symbols}&apikey=${apiKey}`
+
+    const res = await fetch(url)
+    console.log('Status:', res.status)
+
+    const data = await res.json()
+
+    // Extract quotes from response
     const allQuotes = []
-    for (let i = 0; i < batches.length; i++) {
-      const batch = batches[i]
-      const symbols = batch.join(',')
-      const url = `https://api.twelvedata.com/quote?symbol=${symbols}&apikey=${apiKey}`
-
-      try {
-        const res = await fetch(url)
-        console.log('Batch', i + 1, 'status:', res.status)
-
-        if (res.ok) {
-          const data = await res.json()
-          console.log('Batch', i + 1, 'message:', data.message || 'ok')
-
-          // If single ticker, data is an object not array
-          if (batch.length === 1) {
-            if (data && data.symbol && !data.code) {
-              allQuotes.push(data)
-            }
-          } else {
-            // Multiple tickers — data is { AAPL: {...}, BAC: {...}, ... }
-            for (const ticker of batch) {
-              const q = data[ticker]
-              if (q && q.symbol && !q.code) {
-                allQuotes.push(q)
-              }
-            }
-          }
-        }
-      } catch(batchErr) {
-        console.log('Batch', i + 1, 'error:', batchErr.message)
+    if (first8.length === 1) {
+      if (data && data.symbol && !data.code) {
+        allQuotes.push(data)
       }
-
-      // Wait 61 seconds between batches to reset API credits
-      if (i < batches.length - 1) {
-        console.log('Waiting 61 seconds before next batch...')
-        await new Promise(resolve => setTimeout(resolve, 61000))
+    } else {
+      for (const ticker of first8) {
+        const q = data[ticker]
+        if (q && q.symbol && !q.code) {
+          allQuotes.push(q)
+        }
       }
     }
 
-    console.log('Total quotes fetched:', allQuotes.length)
+    console.log('Quotes fetched:', allQuotes.length)
 
     const results = allQuotes
       .filter(q => {
