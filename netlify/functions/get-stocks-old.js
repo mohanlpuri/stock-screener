@@ -8,7 +8,8 @@ exports.handler = async function(event) {
     const body = JSON.parse(event.body)
     const { maxPrice, marketCap, minVolume, customTickers } = body
 
-    const apiKey = process.env.TWELVE_DATA_API_KEY
+    const apiKey = process.env.FMP_API_KEY
+
     console.log('API Key present:', apiKey ? 'yes, length=' + apiKey.length : 'NO - MISSING')
 
     const volumeMap = { any: 0, '100k': 100000, '500k': 500000, '1m': 1000000, '5m': 5000000 }
@@ -16,7 +17,7 @@ exports.handler = async function(event) {
 
     let capMin = 0
     let capMax = 99999999999999
-    if (marketCap === 'small') { capMin = 0;           capMax = 2000000000     }
+    if (marketCap === 'small') { capMin = 0;           capMax: 2000000000     }
     if (marketCap === 'mid')   { capMin = 2000000000;  capMax = 10000000000    }
     if (marketCap === 'large') { capMin = 10000000000; capMax = 99999999999999 }
 
@@ -63,12 +64,12 @@ exports.handler = async function(event) {
     }
     console.log('Total batches:', batches.length)
 
-    // Fetch each batch from Twelve Data
+    // Fetch each batch from FMP stable endpoint
     const allQuotes = []
     for (let i = 0; i < batches.length; i++) {
       const batch = batches[i]
       const symbols = batch.join(',')
-      const url = `https://api.twelvedata.com/quote?symbol=${symbols}&apikey=${apiKey}`
+      const url = `https://financialmodelingprep.com/stable/quote?symbol=${symbols}&apikey=${apiKey}`
 
       try {
         const res = await fetch(url)
@@ -76,22 +77,8 @@ exports.handler = async function(event) {
 
         if (res.ok) {
           const data = await res.json()
-
-          // If single ticker, data is an object not array
-          // If multiple tickers, data is an object keyed by ticker
-          if (batch.length === 1) {
-            if (data && data.symbol && !data.code) {
-              allQuotes.push(data)
-            }
-          } else {
-            // Multiple tickers — data is { AAPL: {...}, BAC: {...}, ... }
-            for (const ticker of batch) {
-              const q = data[ticker]
-              if (q && q.symbol && !q.code) {
-                allQuotes.push(q)
-              }
-            }
-          }
+          console.log('Batch', i + 1, 'quotes:', data.length)
+          allQuotes.push(...data)
         }
       } catch(batchErr) {
         console.log('Batch', i + 1, 'error:', batchErr.message)
@@ -108,9 +95,9 @@ exports.handler = async function(event) {
     const results = allQuotes
       .filter(q => {
         if (!q) return false
-        const price = parseFloat(q.close)
-        const cap = parseFloat(q.market_cap) || 0
-        const vol = parseFloat(q.average_volume) || null
+        const price = q.price
+        const cap = q.marketCap || 0
+        const vol = q.avgVolume || null
         if (!price || price <= 0) return false
         if (price > maxPrice) return false
         if (cap < capMin || cap > capMax) return false
@@ -121,17 +108,17 @@ exports.handler = async function(event) {
       .map(q => ({
         ticker: q.symbol,
         name: q.name || q.symbol,
-        price: parseFloat(q.close),
-        marketCap: parseFloat(q.market_cap) || null,
-        volume: parseFloat(q.average_volume) || 0,
+        price: q.price,
+        marketCap: q.marketCap,
+        volume: q.avgVolume || 0,
         sector: q.sector || 'Unknown',
-        week52High: parseFloat(q.fifty_two_week.high) || null,
-        week52Low: parseFloat(q.fifty_two_week.low) || null,
-        peRatio: parseFloat(q.pe) || null,
+        week52High: q.yearHigh || null,
+        week52Low: q.yearLow || null,
+        peRatio: q.pe || null,
         bookValue: null,
         analystRating: null,
         analystCount: null,
-        dividendYield: null
+        dividendYield: q.lastAnnualDividend || null
       }))
 
     console.log('Results count:', results.length)
