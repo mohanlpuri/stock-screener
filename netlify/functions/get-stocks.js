@@ -60,7 +60,9 @@ exports.handler = async function(event) {
       // Read tickers tab
       const url      = 'https://sheets.googleapis.com/v4/spreadsheets/' + SHEET_ID + '/values/tickers!A:A'
       const sheetRes = await fetch(url, { headers: { 'Authorization': 'Bearer ' + token } })
-      const data     = await sheetRes.json()
+      const rawText  = await sheetRes.text()
+      console.log('Sheets API response:', rawText.slice(0, 300))
+      const data     = JSON.parse(rawText)
       const rows     = data.values || []
 
       defaultTickers = rows
