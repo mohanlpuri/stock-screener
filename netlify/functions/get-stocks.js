@@ -24,26 +24,55 @@ exports.handler = async function(event) {
     if (marketCap === 'large') { capMinM = 10000; capMaxM = 99999999 }  // > $10B
 
     // --- Load tickers from Google Sheet (or fallback hardcoded list) ---
+    // --- Load tickers from Google Sheet via API ---
     let defaultTickers = []
     try {
-      const sheetUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT9NIh8bd8EF4Ed1kb6J7x7v-jkv1sH-jv9NbTOOTUJIaK7RlPGiOdFoCGL1UwyKtRg4WeFw0baY3-Y/pub?output=csv'
-      const sheetRes = await fetch(sheetUrl)
-      const csvText  = await sheetRes.text()
-      console.log('Sheet status:', sheetRes.status)
+      const SHEET_ID     = process.env.GOOGLE_SHEET_ID_TICKERS
+      const CLIENT_EMAIL = process.env.GOOGLE_CLIENT_EMAIL
+      const PRIVATE_KEY  = (process.env.GOOGLE_PRIVATE_KEY || '').replace(/\\n/g, '\n')
 
-      defaultTickers = csvText
-        .split('\n')
-        .map(row => row.split(',')[0].trim().toUpperCase())
+      // Build JWT
+      const crypto   = require('crypto')
+      const header   = { alg: 'RS256', typ: 'JWT' }
+      const now      = Math.floor(Date.now() / 1000)
+      const claim    = {
+        iss:   CLIENT_EMAIL,
+        scope: 'https://www.googleapis.com/auth/spreadsheets.readonly',
+        aud:   'https://oauth2.googleapis.com/token',
+        exp:   now + 3600,
+        iat:   now
+      }
+      const encode   = obj => Buffer.from(JSON.stringify(obj)).toString('base64url')
+      const unsigned = encode(header) + '.' + encode(claim)
+      const sign     = crypto.createSign('RSA-SHA256')
+      sign.update(unsigned)
+      const jwt = unsigned + '.' + sign.sign(PRIVATE_KEY, 'base64url')
+
+      // Get access token
+      const tokenRes  = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=' + jwt
+      })
+      const tokenData = await tokenRes.json()
+      const token     = tokenData.access_token
+
+      // Read tickers tab
+      const url      = 'https://sheets.googleapis.com/v4/spreadsheets/' + SHEET_ID + '/values/tickers!A:A'
+      const sheetRes = await fetch(url, { headers: { 'Authorization': 'Bearer ' + token } })
+      const data     = await sheetRes.json()
+      const rows     = data.values || []
+
+      defaultTickers = rows
+        .map(row => (row[0] || '').trim().toUpperCase())
         .filter(t => t.length > 0 && t !== 'TICKER')
-        .filter((v, i, a) => a.indexOf(v) === i)   // deduplicate
+        .filter((v, i, a) => a.indexOf(v) === i)
 
       console.log('Tickers from sheet:', defaultTickers.length)
+
     } catch(sheetErr) {
       console.log('Sheet fetch failed, using fallback:', sheetErr.message)
-      defaultTickers = [
-        AAPL, MSFT, GOOGL
-        
-      ]
+      defaultTickers = ['AAPL', 'MSFT', 'GOOGL']
     }
 
     const allTickers  = (customTickers && customTickers.length > 0) ? customTickers : defaultTickers
