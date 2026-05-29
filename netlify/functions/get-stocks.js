@@ -41,16 +41,8 @@ exports.handler = async function(event) {
     } catch(sheetErr) {
       console.log('Sheet fetch failed, using fallback:', sheetErr.message)
       defaultTickers = [
-        'BAC','WFC','C','USB','FITB','RF','KEY','HBAN','CFG','MTB',
-        'T','VALE','PBR','RIG','NOK','ABEV','ITUB','SLB','HAL','MRO',
-        'INTC','ERIC','BB','SNAP','CSCO','HPQ','JNPR','AMD','DELL',
-        'PFE','KVUE','OGN','WBA','BHC','VTRS','PRGO',
-        'F','GM','AAL','UAL','DAL','CCL','NCLH','M','KSS','GPS',
-        'NLY','AGNC','MPW','IVR','TWO','MFA','STWD','BXMT','RITM',
-        'VZ','SIRI','PARA','WBD','LUMN',
-        'GOLD','NEM','KGC','HL','PAAS','AG','EXK','TECK','FCX',
-        'PLUG','BE','FCEL','SPWR','RUN','NOVA',
-        'GE','DVN','OVV','CIVI','SM','NOG','CHK','AR'
+        AAPL, MSFT, GOOGL
+        
       ]
     }
 
