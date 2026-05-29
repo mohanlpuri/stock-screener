@@ -26,7 +26,7 @@ exports.handler = async function(event) {
     // --- Load tickers from Google Sheet (or fallback hardcoded list) ---
     // --- Load tickers from Google Sheet via API ---
     let defaultTickers = []
-    try {
+    try { 
       const SHEET_ID     = process.env.GOOGLE_SHEET_ID_TICKERS
       const CLIENT_EMAIL = process.env.GOOGLE_CLIENT_EMAIL
       const PRIVATE_KEY  = (process.env.GOOGLE_PRIVATE_KEY || '').replace(/\\n/g, '\n')
