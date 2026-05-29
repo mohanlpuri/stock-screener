@@ -26,7 +26,7 @@ exports.handler = async function(event) {
     // --- Load tickers from Google Sheet (or fallback hardcoded list) ---
     let defaultTickers = []
     try {
-      const sheetUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR9MsSJjs2TpsnLkaaMzEQuEzjsDy6bxBiGVzEbuEcbulLBMTS7MU0y76GR_9yf5NcVbM7DlsilScWX/pub?gid=778242031&single=true&output=csv'
+      const sheetUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT9NIh8bd8EF4Ed1kb6J7x7v-jkv1sH-jv9NbTOOTUJIaK7RlPGiOdFoCGL1UwyKtRg4WeFw0baY3-Y/pub?output=csv'
       const sheetRes = await fetch(sheetUrl)
       const csvText  = await sheetRes.text()
       console.log('Sheet status:', sheetRes.status)
