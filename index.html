@@ -114,7 +114,24 @@
       margin-bottom: 10px;
     }
 
-    .table-wrap { overflow-x: auto; }
+    .table-wrap { 
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .table-wrap::-webkit-scrollbar {
+      height: 6px;
+    }
+
+    .table-wrap::-webkit-scrollbar-track {
+      background: #f0f0f0;
+      border-radius: 3px;
+    }
+
+    .table-wrap::-webkit-scrollbar-thumb {
+      background: #999;
+      border-radius: 3px;
+    }
 
     table {
       width: 100%;
@@ -591,7 +608,8 @@
               '<td><strong>$' + (s.price ? s.price.toFixed(2) : 'N/A') + '</strong></td>' +
               '<td>' + rangeBar(s.price, s.week52Low, s.week52High) + '</td>' +
               '<td>' + fmtPE(s.peRatio) + '</td>' +
-              '<td>' + fmtBook(s.bookValue) + '</td>' +
+             '<td>' + fmtBook(s.bookValue) + '</td>' +
+              '<td>' + (s.pbRatio ? s.pbRatio.toFixed(2) + 'x' : '<span class="cap">N/A</span>') + '</td>' +
               '<td>' + formatCap(s.marketCap) + '</td>' +
               '<td>' + formatVolume(s.volume) + '</td>' +
               '<td>' + fmtDividend(s.dividendYield) + '</td>' +
@@ -613,6 +631,7 @@
                 '<th>52W Range</th>' +
                 '<th>P/E</th>' +
                 '<th>Book Value</th>' +
+                '<th>P/B</th>' +
                 '<th>Mkt Cap</th>' +
                 '<th>Volume</th>' +
                 '<th>Div Yield</th>' +
