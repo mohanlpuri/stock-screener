@@ -162,6 +162,56 @@
     .badge-hold { background: #fff8e0; color: #8a6000; }
     .badge-sell { background: #fdecea; color: #a32d2d; }
 
+    /* Watch button */
+    .watch-btn {
+      padding: 4px 10px;
+      border: 2px solid #f0a500;
+      border-radius: 6px;
+      background: white;
+      color: #f0a500;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+
+    .watch-btn:hover {
+      background: #f0a500;
+      color: white;
+    }
+
+    .watch-btn.saved {
+      border-color: #2d7a2d;
+      background: #eafaea;
+      color: #2d7a2d;
+      cursor: default;
+    }
+
+    .watch-btn.saving {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* Toast notification */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: #1a1a1a;
+      color: white;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      z-index: 9999;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+    }
+
+    .toast.visible { opacity: 1; }
+
     /* 52W Range bar */
     .range-wrap {
       display: flex;
@@ -289,12 +339,10 @@
     </div>
 
     <div class="filters">
-
       <div class="filter-group">
         <label>Max price ($)</label>
         <input type="number" id="maxPrice" value="100" min="1" max="10000">
       </div>
-
       <div class="filter-group">
         <label>Market cap</label>
         <select id="marketCap">
@@ -304,7 +352,6 @@
           <option value="large">Large cap (&gt;$10B)</option>
         </select>
       </div>
-
       <div class="filter-group">
         <label>Min daily volume</label>
         <select id="minVolume">
@@ -315,7 +362,6 @@
           <option value="5m">5M+</option>
         </select>
       </div>
-
       <div class="filter-group">
         <label>Min value score</label>
         <select id="scoreFilter">
@@ -326,7 +372,6 @@
           <option value="80">80+</option>
         </select>
       </div>
-
       <div class="filter-group">
         <label>Analyst opinion</label>
         <select id="analystFilter">
@@ -336,14 +381,11 @@
           <option value="Sell">Sell</option>
         </select>
       </div>
-
       <div class="filter-group">
         <label>Custom tickers (optional)</label>
         <input type="text" id="customTickers" placeholder="e.g. AAPL, MSFT, BAC">
       </div>
-
       <button id="screenBtn">Screen stocks</button>
-
     </div>
 
     <div id="output">
@@ -357,10 +399,21 @@
     </div>
   </div>
 
+  <!-- Toast notification -->
+  <div class="toast" id="toast"></div>
+
   <script>
     var currentPage    = 1
     var currentFilters = {}
     var totalTickers   = 0
+
+    function showToast(msg, isError) {
+      var t = document.getElementById('toast')
+      t.textContent        = msg
+      t.style.background   = isError ? '#c0392b' : '#1a1a1a'
+      t.classList.add('visible')
+      setTimeout(function() { t.classList.remove('visible') }, 3000)
+    }
 
     function formatCap(cap) {
       if (!cap) return 'N/A'
@@ -433,7 +486,6 @@
 
     function calcScore(stock) {
       var score = 0
-
       if (stock.week52High && stock.week52Low && stock.price) {
         var range = stock.week52High - stock.week52Low
         if (range > 0) {
@@ -441,7 +493,6 @@
           score += Math.round((1 - pos) * 30)
         }
       }
-
       if (stock.peRatio) {
         var pe = stock.peRatio
         if (pe > 0 && pe <= 10)      score += 35
@@ -450,7 +501,6 @@
         else if (pe > 0 && pe <= 30) score += 10
         else if (pe > 0 && pe <= 40) score += 5
       }
-
       if (stock.pbRatio) {
         var pb = stock.pbRatio
         if (pb > 0 && pb <= 1)      score += 20
@@ -458,15 +508,43 @@
         else if (pb > 0 && pb <= 3) score += 10
         else if (pb > 0 && pb <= 5) score += 5
       }
-
       if (stock.dividendYield && stock.dividendYield > 0) {
         var dy = stock.dividendYield
         if (dy >= 5)      score += 15
         else if (dy >= 3) score += 10
         else if (dy >= 1) score += 5
       }
-
       return Math.min(100, score)
+    }
+
+    // Save stock to Watchlist
+    async function saveToWatchlist(btn, stock) {
+      btn.classList.add('saving')
+      btn.textContent = '⏳ Saving...'
+      btn.disabled    = true
+
+      try {
+        var res = await fetch('/.netlify/functions/get-stocks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'saveToWatchlist', stock: stock })
+        })
+        var data = await res.json()
+
+        if (data.ok) {
+          btn.classList.remove('saving')
+          btn.classList.add('saved')
+          btn.textContent = '✅ Watched'
+          showToast('⭐ ' + stock.ticker + ' added to Watchlist!')
+        } else {
+          throw new Error(data.error || 'Save failed')
+        }
+      } catch(e) {
+        btn.classList.remove('saving')
+        btn.textContent = '⭐ Watch'
+        btn.disabled    = false
+        showToast('❌ Failed to save: ' + e.message, true)
+      }
     }
 
     async function fetchStocks(maxPrice, marketCap, minVolume, customTickers, page) {
@@ -505,7 +583,7 @@
       if (scored.length === 0) {
         out.innerHTML = '<div class="empty">No stocks found. Try relaxing the filters.</div>'
       } else {
-        var rows = scored.map(function(s) {
+        var rows = scored.map(function(s, idx) {
           return (
             '<tr>' +
               '<td><a class="ticker-link" href="https://finance.yahoo.com/quote/' + s.ticker + '" target="_blank">' + s.ticker + '</a></td>' +
@@ -519,6 +597,7 @@
               '<td>' + fmtDividend(s.dividendYield) + '</td>' +
               '<td>' + fmtAnalyst(s.analystRating) + '</td>' +
               '<td>' + scoreBar(s.score) + '</td>' +
+              '<td><button class="watch-btn" data-idx="' + idx + '">⭐ Watch</button></td>' +
             '</tr>'
           )
         }).join('')
@@ -539,10 +618,20 @@
                 '<th>Div Yield</th>' +
                 '<th>Analyst Rating</th>' +
                 '<th>Value Score</th>' +
+                '<th>Watch</th>' +
               '</tr></thead>' +
               '<tbody>' + rows + '</tbody>' +
             '</table>' +
           '</div>'
+
+        // Wire up Watch buttons
+        document.querySelectorAll('.watch-btn').forEach(function(btn) {
+          btn.addEventListener('click', function() {
+            var idx   = parseInt(btn.getAttribute('data-idx'))
+            var stock = scored[idx]
+            saveToWatchlist(btn, stock)
+          })
+        })
       }
 
       document.getElementById('paging').style.display = 'flex'
