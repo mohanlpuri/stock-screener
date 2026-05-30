@@ -73,6 +73,8 @@ exports.handler = async function(event) {
       ]
 
       // Read existing Watchlist rows
+      // Read existing Watchlist rows
+      console.log('Saving to sheet ID:', SHEET_ID)
       const readUrl  = 'https://sheets.googleapis.com/v4/spreadsheets/' + SHEET_ID + '/values/WatchList!A:N'
       const readRes  = await fetch(readUrl, { headers: { 'Authorization': 'Bearer ' + token } })
       const readData = await readRes.json()
@@ -96,7 +98,7 @@ exports.handler = async function(event) {
       } else {
         // Append new row
         const appendUrl = 'https://sheets.googleapis.com/v4/spreadsheets/' + SHEET_ID + '/values/WatchList!A:N:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'
-        await fetch(appendUrl, {
+        const appendRes = await fetch(appendUrl, {
           method: 'POST',
           headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
           body: JSON.stringify({ values: [row] })
