@@ -97,7 +97,8 @@ exports.handler = async function(event) {
         console.log('Watchlist updated row ' + rowNum + ' for ' + stock.ticker)
       } else {
         // Append new row
-        const appendUrl = 'https://sheets.googleapis.com/v4/spreadsheets/' + SHEET_ID + '/values/WatchList!A:N:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'
+        const appendUrl = 'https://sheets.googleapis.com/v4/spreadsheets/' + SHEET_ID + '/values/WatchList!A:N/append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'
+        console.log('Append URL:', appendUrl)
         const appendRes = await fetch(appendUrl, {
           method: 'POST',
           headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
