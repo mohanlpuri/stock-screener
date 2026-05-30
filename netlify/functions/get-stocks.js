@@ -55,6 +55,7 @@ exports.handler = async function(event) {
         body: 'grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=' + jwt
       })
       const tokenData = await tokenRes.json()
+      console.log('Token response:', JSON.stringify(tokenData).slice(0, 200))
       const token     = tokenData.access_token
 
       // Read tickers tab
