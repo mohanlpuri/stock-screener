@@ -94,19 +94,19 @@ exports.handler = async function(event) {
         const putData = await putRes.json()
         console.log('WatchList updated row ' + rowNum + ' for ' + stock.ticker)
         console.log('Put response:', JSON.stringify(putData).slice(0, 200))
-      } else {
-        // Append new row
-       const appendUrl = 'https://sheets.googleapis.com/v4/spreadsheets/' + SHEET_ID + '/values/WatchList!A1/append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'
-        console.log('Append URL:', appendUrl)
-        console.log('SHEET_ID:', SHEET_ID)
-        const appendRes = await fetch(appendUrl, {
-          method: 'POST',
+      }  else {
+        // Write to next available row
+        const nextRow   = rows.length + 1
+        const writeUrl  = 'https://sheets.googleapis.com/v4/spreadsheets/' + SHEET_ID + '/values/WatchList!A' + nextRow + ':N' + nextRow + '?valueInputOption=RAW'
+        console.log('Write URL:', writeUrl)
+        const writeRes  = await fetch(writeUrl, {
+          method: 'PUT',
           headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
           body: JSON.stringify({ values: [row] })
         })
-        const appendText = await appendRes.text()
-        console.log('WatchList append status:', appendRes.status)
-        console.log('WatchList append response:', appendText.slice(0, 200))
+        const writeText = await writeRes.text()
+        console.log('WatchList write status:', writeRes.status)
+        console.log('WatchList write response:', writeText.slice(0, 200))
       }
 
       return { statusCode: 200, headers, body: JSON.stringify({ ok: true }) }
