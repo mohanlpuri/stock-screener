@@ -13,7 +13,7 @@ exports.handler = async function(event) {
     const body = JSON.parse(event.body)
 
     // ── Shared: Google auth ──────────────────────────────────────────────────
-    async function getToken() {
+    async function getToken() {  
       const CLIENT_EMAIL = process.env.GOOGLE_CLIENT_EMAIL
       const PRIVATE_KEY  = (process.env.GOOGLE_PRIVATE_KEY || '').replace(/\\n/g, '\n')
       const crypto       = require('crypto')
@@ -37,19 +37,17 @@ exports.handler = async function(event) {
         body: 'grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=' + jwt
       })
       const data = await res.json()
-      return data.access_token
+      return data.access_token 
     }
 
     const SHEET_ID = process.env.GOOGLE_SHEET_ID_TICKERS
 
     // ── Action: Save to Watchlist ────────────────────────────────────────────
-    // Columns: A=Date B=Ticker C=Company D=Price E=52WLow F=52W% G=52WHigh H=PE I=PB J=AnalystRating K=DivYield L=ValueScore M=TipRanks N=Morningstar
     if (body.action === 'saveToWatchlist') {
       const stock = body.stock
       const token = await getToken()
       const today = new Date().toLocaleDateString('en-US')
 
-      // Calculate 52W%
       var pct52 = ''
       if (stock.week52High && stock.week52Low && stock.price && stock.week52High > stock.week52Low) {
         pct52 = Math.round(((stock.price - stock.week52Low) / (stock.week52High - stock.week52Low)) * 100) + '%'
@@ -58,57 +56,61 @@ exports.handler = async function(event) {
       const row = [
         today,
         stock.ticker,
-        stock.name        || '',
-        stock.price       != null ? stock.price.toFixed(2)       : '',
-        stock.week52Low   != null ? stock.week52Low.toFixed(2)   : '',
+        stock.name          || '',
+        stock.price         != null ? stock.price.toFixed(2)       : '',
+        stock.week52Low     != null ? stock.week52Low.toFixed(2)   : '',
         pct52,
-        stock.week52High  != null ? stock.week52High.toFixed(2)  : '',
-        stock.peRatio     != null ? stock.peRatio.toFixed(2)     : '',
-        stock.pbRatio     != null ? stock.pbRatio.toFixed(2)     : '',
+        stock.week52High    != null ? stock.week52High.toFixed(2)  : '',
+        stock.peRatio       != null ? stock.peRatio.toFixed(2)     : '',
+        stock.pbRatio       != null ? stock.pbRatio.toFixed(2)     : '',
         stock.analystRating || '',
         stock.dividendYield != null ? stock.dividendYield.toFixed(2) + '%' : '',
-        stock.score       != null ? String(stock.score)          : '',
-        '',  // Tip Ranks — filled manually
-        ''   // Morningstar — filled manually
+        stock.score         != null ? String(stock.score)          : '',
+        '',
+        ''
       ]
 
-      // Read existing Watchlist rows
-      // Read existing Watchlist rows
-      console.log('Saving to sheet ID:', SHEET_ID)
+      // Read existing WatchList rows to check for duplicates
       const readUrl  = 'https://sheets.googleapis.com/v4/spreadsheets/' + SHEET_ID + '/values/WatchList!A:N'
       const readRes  = await fetch(readUrl, { headers: { 'Authorization': 'Bearer ' + token } })
       const readData = await readRes.json()
       const rows     = readData.values || []
 
-      // Find existing row with same Date + Ticker (cols A and B)
+      console.log('WatchList existing rows:', rows.length)
+
       const existingIdx = rows.findIndex(function(r, i) {
         return i > 0 && r[0] === today && r[1] === stock.ticker
       })
 
       if (existingIdx > 0) {
         // Overwrite existing row
-        const rowNum  = existingIdx + 1
-        const putUrl  = 'https://sheets.googleapis.com/v4/spreadsheets/' + SHEET_ID + '/values/WatchList!A' + rowNum + ':N' + rowNum + '?valueInputOption=RAW'
-        await fetch(putUrl, {
+        const rowNum = existingIdx + 1
+        const putUrl = 'https://sheets.googleapis.com/v4/spreadsheets/' + SHEET_ID + '/values/WatchList!A' + rowNum + ':N' + rowNum + '?valueInputOption=RAW'
+        const putRes = await fetch(putUrl, {
           method: 'PUT',
           headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
           body: JSON.stringify({ values: [row] })
         })
-        console.log('Watchlist updated row ' + rowNum + ' for ' + stock.ticker)
+        const putData = await putRes.json()
+        console.log('WatchList updated row ' + rowNum + ' for ' + stock.ticker)
+        console.log('Put response:', JSON.stringify(putData).slice(0, 200))
       } else {
         // Append new row
         const appendUrl = 'https://sheets.googleapis.com/v4/spreadsheets/' + SHEET_ID + '/values/WatchList!A:N/append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'
-       
+        const appendRes = await fetch(appendUrl, {
           method: 'POST',
           headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
           body: JSON.stringify({ values: [row] })
         })
-        console.log('Watchlist appended new row for ' + stock.ticker)
+        const appendText = await appendRes.text()
+        console.log('WatchList append status:', appendRes.status)
+        console.log('WatchList append response:', appendText.slice(0, 200))
       }
 
-      return { console.log('Append URL:', appendUrl)
-      const appendRes = await fetch(appendUrl, { statusCode: 200, headers, body: JSON.stringify({ ok: true }) }
+      return { statusCode: 200, headers, body: JSON.stringify({ ok: true }) }
     }
+
+   
 
     // ── Main screener action ─────────────────────────────────────────────────
     const { maxPrice, marketCap, minVolume, customTickers, page } = body
@@ -126,11 +128,10 @@ exports.handler = async function(event) {
     if (marketCap === 'mid')   { capMinM = 2000;  capMaxM = 10000   }
     if (marketCap === 'large') { capMinM = 10000; capMaxM = 99999999 }
 
-    // --- Load tickers from Google Sheet via API ---
+    // Load tickers from Google Sheet via API
     let defaultTickers = []
     try {
-      const token = await getToken()
-
+      const token    = await getToken()
       const url      = 'https://sheets.googleapis.com/v4/spreadsheets/' + SHEET_ID + '/values/tickers!A:A'
       const sheetRes = await fetch(url, { headers: { 'Authorization': 'Bearer ' + token } })
       const rawText  = await sheetRes.text()
@@ -230,7 +231,7 @@ exports.handler = async function(event) {
             dividendYield: divYield
           }
 
-        } catch(e) {  
+        } catch(e) {
           console.log('Error fetching ' + ticker + ': ' + e.message)
           return null
         }
