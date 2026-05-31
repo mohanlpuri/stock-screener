@@ -96,7 +96,9 @@ exports.handler = async function(event) {
         console.log('Put response:', JSON.stringify(putData).slice(0, 200))
       } else {
         // Append new row
-        const appendUrl = 'https://sheets.googleapis.com/v4/spreadsheets/' + SHEET_ID + '/values/WatchList!A1/append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'
+       const appendUrl = 'https://sheets.googleapis.com/v4/spreadsheets/' + SHEET_ID + '/values/WatchList!A1/append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'
+        console.log('Append URL:', appendUrl)
+        console.log('SHEET_ID:', SHEET_ID)
         const appendRes = await fetch(appendUrl, {
           method: 'POST',
           headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
