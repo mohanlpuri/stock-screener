@@ -40,7 +40,9 @@ exports.handler = async function(event) {
       return data.access_token 
     }
 
-    const SHEET_ID = process.env.GOOGLE_SHEET_ID_TICKERS
+    //const SHEET_ID = process.env.GOOGLE_SHEET_ID_TICKERS
+    const SHEET_ID = '1jEewUVyxHH-vA0qboYE7fGSn22UO7a5fMkwjZ7IXfOE'
+
 
     // ── Action: Save to Watchlist ────────────────────────────────────────────
     if (body.action === 'saveToWatchlist') {
